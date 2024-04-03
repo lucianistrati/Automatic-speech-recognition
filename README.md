@@ -1,4 +1,4 @@
-# Vespio AI Challenge
+# Automatic speech recognition
 
 ## Install dependencies
 
