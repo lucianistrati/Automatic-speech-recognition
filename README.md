@@ -1,5 +1,7 @@
 # Automatic speech recognition
 
+This repository contains functionality for automatic speech recognition and transcript analysis.
+
 ## Install dependencies
 
 Install all the project dependencies by running the following command in the 
