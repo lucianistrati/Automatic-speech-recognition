@@ -3,17 +3,6 @@ from pytube import YouTube
 import json
 from typing import List, Tuple
 from collections import Counter
-
-
-def download_video(url: str) -> str:
-    saving_path = YouTube(url).streams.first(
-
-    ).download()
-    return saving_path
-
-
-download_video("")
-exit(0)
 from automatic_speech_recognition import automatic_speech_recognition
 from speaker_identification import speaker_identification
 from converters import convert
@@ -23,6 +12,12 @@ from transcript_quality_improvement_comparison import\
 from moviepy.editor import VideoFileClip
 from pydub import AudioSegment
 
+
+def download_video(url: str) -> str:
+    saving_path = YouTube(url).streams.first(
+
+    ).download()
+    return saving_path
 
 def convert_mp4_to_wav(input_mp4, output_wav):
     video_clip = VideoFileClip(input_mp4)
