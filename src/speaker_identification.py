@@ -1,29 +1,38 @@
 from pyAudioAnalysis import audioSegmentation
 from matplotlib import pyplot as plt
-
+from typing import List, Tuple, Dict, Any
 import json
 
 
-def identify_speakers_py_audio_analysis(audio_file_path):
-    # Perform speaker diarization
-    speakers_flags, _, _ = audioSegmentation.speaker_diarization(audio_file_path, 2)
+def identify_speakers_py_audio_analysis(audio_file_path: str, num_speakers: int = 2) -> List[int]:
+    """Perform speaker diarization using the pyAudioAnalysis library.
 
-    return str(speakers_flags.tolist())
+    Args:
+        audio_file_path (str): Path to the audio file.
+        num_speakers (int): The number of speakers to identify.
 
-
-def plot_speakers_parts(timestamp_segments_to_speaker):
+    Returns:
+        List[int]: A list of integers indicating speaker labels for each frame.
     """
-    Plot a horizontal bar chart representing the segmentation of the conversation by speakers.
+    try:
+        speakers_flags, _, _ = audioSegmentation.speaker_diarization(audio_file_path, num_speakers)
+        return speakers_flags.tolist()
+    except Exception as e:
+        raise Exception(f"Error during speaker diarization: {e}")
 
-    Parameters:
-    - timestamp_segments_to_speaker (list of tuples): List of tuples containing timestamp segments
-      associated with respective speakers. Each tuple has the format (start_time, end_time, speaker_name).
+
+def plot_speakers_parts(timestamp_segments_to_speaker: List[Tuple[float, float, str]]):
+    """Plot a horizontal bar chart representing the segmentation of the conversation by speakers.
+
+    Args:
+        timestamp_segments_to_speaker (List[Tuple[float, float, str]]): List of tuples containing 
+        timestamp segments associated with respective speakers. 
+        Each tuple has the format (start_time, end_time, speaker_name).
     """
-
     # Extract speaker names and corresponding start and end timestamps
-    speakers = [segment[0] for segment in timestamp_segments_to_speaker]
-    start_times = [segment[1] for segment in timestamp_segments_to_speaker]
-    end_times = [segment[2] for segment in timestamp_segments_to_speaker]
+    speakers = [segment[2] for segment in timestamp_segments_to_speaker]
+    start_times = [segment[0] for segment in timestamp_segments_to_speaker]
+    end_times = [segment[1] for segment in timestamp_segments_to_speaker]
 
     # Calculate durations for each speaker
     durations = [end - start for start, end in zip(start_times, end_times)]
@@ -36,14 +45,19 @@ def plot_speakers_parts(timestamp_segments_to_speaker):
     plt.ylabel('Speakers')
     plt.title('Speaker Segmentation Over Time')
     plt.savefig("images/speaker_segmentation_over_time_intervals.png")
-    # Display the plot
     plt.show()
 
 
-def get_speaker_segments(sequence, frame_duration=0.1):
-    # Assuming frame_duration is the duration of each frame in seconds
-    # Adjust as needed based on your specific audio file characteristics
+def get_speaker_segments(sequence: List[int], frame_duration: float = 0.1) -> List[Dict[str, Any]]:
+    """Extract speaker segments from the diarization sequence.
 
+    Args:
+        sequence (List[int]): The diarization sequence indicating speaker changes.
+        frame_duration (float): Duration of each frame in seconds.
+
+    Returns:
+        List[Dict[str, Any]]: A list of segments where each segment contains speaker info and timing.
+    """
     segments = []
     current_segment = {"speaker": None, "start_time": None}
 
@@ -68,30 +82,31 @@ def get_speaker_segments(sequence, frame_duration=0.1):
 
 
 def speaker_identification(audio_file_path: str = '../data/short_audio_2_speakers.wav'):
+    """Main function to identify speakers in the audio file.
+
+    Args:
+        audio_file_path (str): Path to the audio file for speaker identification.
+    """
     print("#" * 100)
     print("speaker_identification")
 
-    transcript_with_speakers = ""
-    speakers_flags = identify_speakers_py_audio_analysis(
-        audio_file_path)
+    try:
+        # Identify speakers and save results
+        speakers_flags = identify_speakers_py_audio_analysis(audio_file_path)
+        with open("../data/transcript_with_speakers_short_py_audio_analysis.txt", "w") as f:
+            f.write(json.dumps(speakers_flags))
 
-    with open("../data/transcript_with_speakers_short_py_audio_analysis.txt", "w") as f:
-        f.write(speakers_flags)
-    duration = get_wav_duration("../data/short_audio_2_speakers.wav")
-    (transcript_text, text_turns, timestamp_to_content, turns_times, flags,
-     confidence_scores) \
-        = (
-        extract_turns(
-            "../data/transcript_short_2_speakers_aws_segmented.json",
-            duration))
-    (transcript_text, text_turns, timestamp_to_content, turns_times, flags,
-     confidence_scores) \
-        = (
-        extract_turns(
-            "../data/transcript_aws_segmented.json",
-            duration))
-    print(timestamp_to_content)
-    print(turns_times)
+        # Get audio duration
+        duration = get_wav_duration(audio_file_path)
+
+        # Extract transcript turns
+        transcript_info = extract_turns("../data/transcript_short_2_speakers_aws_segmented.json", duration)
+        transcript_text, text_turns, timestamp_to_content, turns_times, flags, confidence_scores = transcript_info
+
+        print(timestamp_to_content)
+        print(turns_times)
+    except Exception as e:
+        print("Error in speaker identification process:", e)
 
 
 if __name__ == "__main__":

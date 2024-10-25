@@ -5,7 +5,7 @@ from textblob import TextBlob
 from transformers import pipeline
 from typing import Union
 from collections import Counter
-
+from src.chat_gpt import chat_gpt
 import json
 # import language_tool_python
 from summa import summarizer
@@ -18,7 +18,22 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from typing import Dict, Tuple
 from nltk.corpus import stopwords
-
+from statistics import mean
+from nltk.tokenize import word_tokenize
+from textstat import (
+    automated_readability_index,
+    coleman_liau_index,
+    dale_chall_readability_score,
+    difficult_words,
+    flesch_kincaid_grade,
+    flesch_reading_ease,
+    gulpease_index,
+    gunning_fog,
+    linsear_write_formula,
+    osman,
+    smog_index,
+)
+from textstat.textstat import textstatistics
 from src.utils import extract_turns
 
 nltk.download("stopwords")
@@ -43,28 +58,9 @@ def get_wav_duration(wav_file):
     return duration_seconds
 
 
-
-from statistics import mean
-
-from nltk.tokenize import word_tokenize
-from textstat import (
-    automated_readability_index,
-    coleman_liau_index,
-    dale_chall_readability_score,
-    difficult_words,
-    flesch_kincaid_grade,
-    flesch_reading_ease,
-    gulpease_index,
-    gunning_fog,
-    linsear_write_formula,
-    osman,
-    smog_index,
-)
-from textstat.textstat import textstatistics
-
-
 def syllables_count(text: str) -> int:
     return int(textstatistics().syllable_count(text))
+
 
 def poly_syllable_count(text: str) -> float:
     text_tokens = word_tokenize(text)
@@ -362,7 +358,6 @@ def topic_modelling(transcript: str) -> Dict[str, str]:
     return sentence_topic_mapping
 
 
-
 def turn_duration_statistics(turns: List[str], turns_times: List[Tuple[str, float,
 float]]):
     flags = [turn[0] for turn in turns_times]
@@ -403,6 +398,124 @@ def decide_intervals(content_start, content_end, speaker_start, speaker_end):
         raise ValueError("Bad values for the intervals")
 
 
+def vocabulary_analysis(text: str):
+    """
+    Vocabulary Analysis:
+    Examine the vocabulary used by each speaker to identify any specialized terms or
+    patterns that may reveal areas of expertise or interest.
+    """
+    prompt = (f"""Given what this speaker said throughout this conversation, what are the"
+              "specialized terms the speaker used and what are the areas of expertise"
+              " and interest possessed by the speaker? This is what the speaker said:"
+              "{text}""")
+    return chat_gpt(prompt)
+
+
+def segment_narrative_structure(transcript: str):
+    """
+    Narrative Structure:
+    Assess the narrative structure of the conversation, including the introduction,
+    development, and resolution of topics.
+    :return:
+    """
+    prompt = (f"Given this transcript: {transcript}, return a mapping with 3 entries "
+              f"where the keys are 'introduction', 'development' and 'resolution'"
+              f"and the values are pairs of timestamps between each of those 3 phases "
+              f"occured in conversation?")
+    return chat_gpt(prompt)
+
+
+def extract_politeness_strategies(text: str):
+    """
+    Politeness Strategies:
+    Analyze politeness strategies used by each speaker, such as
+    expressions of gratitude, politeness markers, or requests.
+    :return:
+    """
+    prompt = (f"Given the following {text} return a list of exressions of gratitude, "
+              f"a list of politeness markers and a list of requests made in the "
+              f"conversation")
+    return chat_gpt(prompt)
+
+
+def extract_speech_acts(transcript: str):
+    num_speakers = 2
+    data = json.load(chat_gpt(f"""Given this transcript: {transcript}. Return a json 
+                              "dictionary with {num_speakers} * 3 "
+                              "entries where the keys follow these 3 patterns: 
+                              "speaker_i_to_questions, speaker_i_to_requests, 
+                              "speaker_i_to_affirmations for each of the {num_speakers} 
+                              "speakers the values are the questions, the requests                              
+                              "and the affirmations respectively posed by that 
+                              "speaker and written as a List[str] for each value."""))
+    return data
+
+
+
+def identify_humor(text: str):
+    return chat_gpt(f"Given this text: {text} return as a list of strings all the "
+                    f"instances of humor present in the text along with which "
+                    f"speaker stated that affirmation if you know that")
+
+
+def identify_sarcasm(text: str):
+    return chat_gpt(f"Given this text: {text} return as a list of strings all the "
+                    f"instances of sarcasm present in the text along with which "
+                    f"speaker stated that affirmation if you know that")
+
+
+def classify_communication_style(text: str):
+    return chat_gpt(f"Given this text: {text} classify the communication style with "
+                    f"the following options")
+
+
+def classify_agreeableness(text: str) -> float:
+    return chat_gpt(f"Given this text: {text} rank with a score from 0.0 to 1.0 an "
+                    f"agreeableness metric "
+                    f"which "
+                    f"measures how agreeableness the conversation was")
+
+
+def count_interruptions(text: str):
+    # prompt to decide something is an interruption or not
+    return chat_gpt(f"Given this text: {text} return as a list all the interruptions "
+                    f"that were made during this conversation")
+
+
+def extract_repetitions_and_agreements(text: str) -> List[str]:
+    """
+    Repetition and Agreement:
+    Look for instances of repetition or agreement to identify common themes or points of
+     emphasis in the conversation.
+    :return:
+    """
+    return chat_gpt(f"Given this text: {text}, look for instances of repetition or "
+                    f"agreement to identify common themes or points of emphasis in the"
+                    f"conversation and return them as a list of strings")
+
+
+def identify_defensive_langauge(text: str) -> List[str]:
+    return chat_gpt(f"Given this text: {text} return as a list of strings all the "
+                    f"instances of defensive languages")
+
+
+def identify_conflicts(text: str) -> List[str]:
+    return chat_gpt(f"Given this text: {text} return as a list of strings with all "
+                    f"the conflicts mentioned in the text")
+
+
+def identify_points_of_tension(text: str) -> List[str]:
+    return chat_gpt(f"Given this text: {text} return as a list of strings all the "
+                    "points of tension mentioned during this conversation between two"
+                    "persons")
+
+
+def predict_sentiment_llm(text: str):
+    return chat_gpt(f"Given this text: {text}, predict the sentiment out of 3 "
+                    f"possibile choices: NEGATIVE, NEUTRAL or POSITIVE, write just "
+                    f"that word and nothing else")
+
+
 def analyse_transcript(transcript_file_path: str):
     print("#" * 60)
     print(transcript_file_path)
@@ -428,27 +541,27 @@ def analyse_transcript(transcript_file_path: str):
     https://platform.openai.com/docs/guides/error-codes/api-errors.
     """
     plot_wordcloud(transcript_text)
-    # vocabulary_analysis(transcript_text)
-    # segment_narrative_structure(transcript_text)
-    # extract_politeness_strategies(transcript_text)
-    # extract_speech_acts(transcript_text)
+    vocabulary_analysis(transcript_text)
+    segment_narrative_structure(transcript_text)
+    extract_politeness_strategies(transcript_text)
+    extract_speech_acts(transcript_text)
     topic_modelling(transcript_text)
     keyword_detection(transcript_text)
     # grammar_correction(transcript_text)
-    # speakers_intervals = [(0.0, 5.0, 0), (5.0, 6.2, 1), (6.2, 7.4, 0),
-    # (7.4, 14.700000000000001, 1), (14.700000000000001, 19.900000000000002, 0),
-    # (19.900000000000002, 28.700000000000003, 1),
-    # (28.700000000000003, 29.900000000000002, 0), (29.900000000000002, 36.1, 1),
-    # (36.1, 36.800000000000004, 0), (36.800000000000004, 41.6, 1),
-    # (41.6, 46.800000000000004, 0)]
-    # speakers_intervals = [(0.0, 2.7, 1), (2.7, 4.9, 0), (4.9, 6.2, 1),
-    #                       (6.2, 7.300000000000001, 0),
-    #                       (7.300000000000001, 14.700000000000001, 1),
-    #                       (14.700000000000001, 19.900000000000002, 0),
-    #                       (19.900000000000002, 28.8, 1), (28.8, 29.6, 0),
-    #                       (29.6, 36.1, 1), (36.1, 36.7, 0), (36.7, 41.6, 1),
-    #                       (41.6, 43.6, 0), (43.6, 46.6, 1),
-    #                       (46.6, 46.800000000000004, 0)]
+    speakers_intervals = [(0.0, 5.0, 0), (5.0, 6.2, 1), (6.2, 7.4, 0),
+    (7.4, 14.700000000000001, 1), (14.700000000000001, 19.900000000000002, 0),
+    (19.900000000000002, 28.700000000000003, 1),
+    (28.700000000000003, 29.900000000000002, 0), (29.900000000000002, 36.1, 1),
+    (36.1, 36.800000000000004, 0), (36.800000000000004, 41.6, 1),
+    (41.6, 46.800000000000004, 0)]
+    speakers_intervals = [(0.0, 2.7, 1), (2.7, 4.9, 0), (4.9, 6.2, 1),
+                          (6.2, 7.300000000000001, 0),
+                          (7.300000000000001, 14.700000000000001, 1),
+                          (14.700000000000001, 19.900000000000002, 0),
+                          (19.900000000000002, 28.8, 1), (28.8, 29.6, 0),
+                          (29.6, 36.1, 1), (36.1, 36.7, 0), (36.7, 41.6, 1),
+                          (41.6, 43.6, 0), (43.6, 46.6, 1),
+                          (46.6, 46.800000000000004, 0)]
     # allign_timestamps('data/transcript_short_2_speakers_aws.json',
     # speakers_intervals)
 
@@ -465,7 +578,7 @@ def transcript_analysis():
         analyse_transcript(transcript_file_path)
 
 
-if __name__ == "__main__":
+def main():
     duration = get_wav_duration("../data/short_audio_2_speakers.wav")
     (transcript_text, text_turns, timestamp_to_content, turns_times, flags,
      confidence_scores)\
@@ -494,3 +607,7 @@ if __name__ == "__main__":
     plot_sentiment_analysis(timestamp_to_sentiment_score)
     temporal_confidence_score_distribution(confidence_scores, duration, flags)
     # transcript_analysis()
+
+
+if __name__ == "__main__":
+    main()
